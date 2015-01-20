@@ -1,0 +1,57 @@
+worker_processes  64; # Number of CPUs
+
+error_log  /home/ops/api-hub/error.log warn;
+
+pid        /home/ops/api-hub/nginx.pid;
+
+worker_rlimit_nofile 102400;
+
+events {
+    worker_connections  102400;
+}
+
+http {
+
+    upstream api_proxy_pool {
+        server 192.168.32.11:18088;
+        server 192.168.32.12:18088;
+        server 192.168.32.13:18088;
+        server 192.168.32.14:18088;
+        server 192.168.32.15:18088;
+        server 192.168.32.16:18088;
+    }
+
+    keepalive_timeout 5m;
+    keepalive_requests 100000;
+    gzip on;
+    large_client_header_buffers 4 16k;
+    client_header_buffer_size 128k;
+
+    server {
+        listen       20000;
+        server_name  localhost;
+        
+        log_format main  '$remote_addr-$time_local-$request_length-'
+                         '$status-$request_time-$body_bytes_sent';
+        access_log /home/ops/api-hub/access.log main;
+        access_log on;
+
+        location / {
+                proxy_pass http://api_proxy_pool;
+	     	client_max_body_size 300m;
+            client_body_buffer_size 1000m;
+        	proxy_connect_timeout 600;
+        	proxy_read_timeout 600;
+       		proxy_send_timeout 600;
+        	proxy_buffer_size 64k;
+        	proxy_buffers   4 32k;
+        	proxy_busy_buffers_size 64k;
+        	proxy_temp_file_write_size 1024m;
+        	proxy_ignore_client_abort on;
+            proxy_set_header Connection "";
+        }	
+
+    }
+
+}
+
